@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Advanced Viral Calorie Calculator: Predict your weight loss date, calculate TDEE, and get a Zig-Zag calorie cycling plan. Scientifically modeled data.">
+    <meta name="keywords" content="calorie calculator, weight loss date predictor, TDEE calculator, zig zag diet calculator, macro split">
+    <meta name="author" content="Health Metrics Analytics">
+    <title>Metabolic Master | Date-Based Weight Loss Predictor</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* --- LIQUID GLASS 3.0 UI THEME --- */
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(circle at top right, #c7d2fe 0%, #f5d0fe 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            color: #1e1b4b;
+            overflow-x: hidden;
+        }
+
+        /* Animated Blobs */
+        .blob {
+            position: absolute;
+            filter: blur(80px);
+            z-index: -1;
+            animation: float 12s infinite ease-in-out;
+            opacity: 0.7;
+        }
+        .blob-1 { top: -10%; left: -10%; width: 600px; height: 600px; background: #a5b4fc; animation-delay: 0s; }
+        .blob-2 { bottom: -10%; right: -20%; width: 700px; height: 700px; background: #f0abfc; animation-delay: 3s; }
+        .blob-3 { top: 40%; left: 30%; width: 400px; height: 400px; background: #c4b5fd; animation-delay: 6s; }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0, 0) scale(1); }
+        }
+
+        /* Ultimate Glassmorphism */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+            border-radius: 28px;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            transform: translateY(-4px);
+            background: rgba(255, 255, 255, 0.7);
+            box-shadow: 0 10px 30px rgba(79, 70, 229, 0.1);
+        }
+
+        .glass-input {
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: all 0.2s;
+        }
+        .glass-input:focus {
+            background: rgba(255, 255, 255, 0.95);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+            border-color: #6366f1;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #4f46e5, #9333ea);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #68D391;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #68D391;
+        }
+
+        /* Animations */
+        .fade-in-up { animation: fadeInUp 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; opacity: 0; transform: translateY(30px); }
+        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+
+        /* Print Override */
+        @media print {
+            body { background: white; -webkit-print-color-adjust: exact; }
+            .no-print, nav, footer, .blob { display: none !important; }
+            #results { display: block !important; box-shadow: none; border: 1px solid #ddd; }
+            .page-break { page-break-before: always; }
+        }
+    </style>
+
+    <!-- Schema Markup for Calculator Tool -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Metabolic Master Calorie Calculator",
+      "url": "https://example.com/calculator",
+      "description": "Calculate TDEE, BMR, and estimated weight loss dates using the Mifflin-St Jeor equation. Includes Calorie Cycling plans.",
+      "applicationCategory": "HealthApplication",
+      "operatingSystem": "Web",
+      "offers": { "@type": "Offer", "price": "0" },
+      "featureList": "Date Prediction, Zig Zag Calorie Cycling, Macronutrient Split"
+    }
+    </script>
+</head>
+<body class="relative text-slate-800">
+
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <!-- Nav -->
+    <nav class="glass-panel sticky top-4 mx-4 md:mx-auto max-w-6xl z-50 px-6 py-4 flex justify-between items-center mb-10 no-print">
+        <div class="flex items-center gap-3">
+            <div class="bg-indigo-600 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                <i class="fa-solid fa-bolt text-lg"></i>
+            </div>
+            <span class="text-xl font-bold tracking-tight">Metabolic<span class="text-indigo-600">Master</span></span>
+        </div>
+        <button onclick="document.getElementById('calculator').scrollIntoView({behavior: 'smooth'})" class="hidden md:block bg-slate-900 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-slate-800 transition shadow-xl shadow-slate-900/10">
+            Launch Calculator
+        </button>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-4 pb-24">
+
+        <!-- Hero -->
+        <header class="text-center py-10 md:py-16 fade-in-up">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 border border-white/50 text-indigo-700 text-sm font-bold tracking-wide mb-6 shadow-sm">
+                <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                </span>
+                DATA-DRIVEN METABOLIC MODELING
+            </div>
+            <h1 class="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight leading-tight">
+                Stop Guessing. <br class="hidden md:block" /> Start <span class="gradient-text">Engineering.</span>
+            </h1>
+            <p class="text-xl text-slate-600 max-w-2xl mx-auto leading-relaxed">
+                A professional-grade metabolic calculator that predicts <strong>exactly when</strong> you'll hit your goal weight based on energy thermodynamics.
+            </p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- LEFT: Calculator Engine -->
+            <div class="lg:col-span-7 fade-in-up" style="animation-delay: 0.1s;">
+                <div class="glass-panel p-8 md:p-10 relative overflow-hidden" id="calculator">
+                    
+                    <div class="flex justify-between items-center mb-8">
+                        <h2 class="text-2xl font-bold flex items-center gap-2">
+                            <i class="fa-regular fa-id-card text-indigo-500"></i> Biometrics
+                        </h2>
+                    </div>
+
+                    <form id="calForm" onsubmit="calculateCalories(event)" class="space-y-8 relative z-10">
+                        
+                        <!-- Gender -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <label class="cursor-pointer group">
+                                <input type="radio" name="gender" value="male" checked class="peer sr-only">
+                                <div class="glass-card p-4 flex flex-col items-center justify-center gap-2 h-28 border-2 border-transparent peer-checked:border-indigo-500 peer-checked:bg-indigo-50/50 transition-all">
+                                    <i class="fa-solid fa-mars text-2xl text-slate-400 peer-checked:text-indigo-600 group-hover:scale-110 transition-transform"></i>
+                                    <span class="font-bold text-slate-600 peer-checked:text-indigo-900">Male</span>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer group">
+                                <input type="radio" name="gender" value="female" class="peer sr-only">
+                                <div class="glass-card p-4 flex flex-col items-center justify-center gap-2 h-28 border-2 border-transparent peer-checked:border-pink-500 peer-checked:bg-pink-50/50 transition-all">
+                                    <i class="fa-solid fa-venus text-2xl text-slate-400 peer-checked:text-pink-600 group-hover:scale-110 transition-transform"></i>
+                                    <span class="font-bold text-slate-600 peer-checked:text-pink-900">Female</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Age -->
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Age</label>
+                            <input type="number" id="age" value="28" class="w-full px-5 py-4 rounded-xl glass-input font-bold text-lg text-slate-800" required>
+                        </div>
+
+                        <!-- Mixed Unit Inputs -->
+                        <div class="grid md:grid-cols-2 gap-6">
+                            
+                            <!-- Weight Input -->
+                            <div class="bg-white/40 p-1 rounded-2xl">
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 ml-2 mt-2">Current Weight</label>
+                                <div class="flex">
+                                    <input type="number" id="weight" placeholder="e.g. 75" class="w-full px-4 py-3 bg-transparent font-bold text-xl outline-none" required>
+                                    <select id="weight-unit" class="bg-transparent font-semibold text-slate-500 px-2 outline-none cursor-pointer text-right">
+                                        <option value="kg">kg</option>
+                                        <option value="lbs">lbs</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Goal Weight Input (New for Viral Date Prediction) -->
+                            <div class="bg-white/40 p-1 rounded-2xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 transition-colors">
+                                <label class="block text-xs font-bold text-indigo-500 uppercase tracking-wider mb-1 ml-2 mt-2">Goal Weight</label>
+                                <div class="flex">
+                                    <input type="number" id="goal-weight" placeholder="e.g. 70" class="w-full px-4 py-3 bg-transparent font-bold text-xl outline-none text-indigo-700">
+                                    <span class="flex items-center px-2 font-semibold text-indigo-400 text-sm" id="goal-unit-display">kg</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Height Input with Toggle Logic inside -->
+                        <div class="bg-white/40 p-1 rounded-2xl">
+                             <div class="flex justify-between items-center px-2 pt-2">
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">Height</label>
+                                <select id="height-unit-selector" onchange="toggleHeightInputs(this.value)" class="text-xs bg-white/50 rounded px-2 py-1 font-semibold text-indigo-600 cursor-pointer outline-none">
+                                    <option value="cm">Centimeters (cm)</option>
+                                    <option value="ft">Feet & Inches</option>
+                                </select>
+                            </div>
+                            
+                            <!-- CM Input -->
+                            <div id="height-cm-wrapper" class="flex items-center">
+                                <input type="number" id="height-cm" placeholder="175" class="w-full px-4 py-3 bg-transparent font-bold text-xl outline-none">
+                                <span class="px-4 text-slate-400 font-medium">cm</span>
+                            </div>
+
+                            <!-- Ft/In Input -->
+                            <div id="height-ft-wrapper" class="hidden flex items-center gap-2 px-2 pb-2">
+                                <div class="flex-1 flex items-center bg-white/50 rounded-lg">
+                                    <input type="number" id="height-ft" placeholder="5" class="w-full px-3 py-3 bg-transparent font-bold text-xl outline-none">
+                                    <span class="pr-3 text-slate-400 font-medium text-sm">ft</span>
+                                </div>
+                                <div class="flex-1 flex items-center bg-white/50 rounded-lg">
+                                    <input type="number" id="height-in" placeholder="10" class="w-full px-3 py-3 bg-transparent font-bold text-xl outline-none">
+                                    <span class="pr-3 text-slate-400 font-medium text-sm">in</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Activity -->
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Activity Level</label>
+                            <div class="relative">
+                                <select id="activity" class="w-full px-5 py-4 rounded-xl glass-input font-semibold text-slate-800 appearance-none cursor-pointer">
+                                    <option value="1.2">Sedentary (Office job, little movement)</option>
+                                    <option value="1.375">Lightly Active (1-3 days/week)</option>
+                                    <option value="1.55" selected>Moderate (3-5 days/week)</option>
+                                    <option value="1.725">Very Active (6-7 days/week)</option>
+                                    <option value="1.9">Athlete (Physical job or 2x training)</option>
+                                </select>
+                                <div class="absolute right-5 top-5 pointer-events-none text-indigo-500">
+                                    <i class="fa-solid fa-chevron-down"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xl py-5 rounded-2xl shadow-xl shadow-slate-900/20 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-3">
+                            <span>Calculate Plan</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+
+                    </form>
+                </div>
+
+                <!-- RESULTS DASHBOARD -->
+                <div id="results" class="hidden mt-10 fade-in-up">
+                    
+                    <!-- 1. Viral Date Prediction Card -->
+                    <div class="glass-panel p-8 mb-8 border-l-8 border-indigo-500 relative overflow-hidden group">
+                        <div class="absolute -right-10 -top-10 w-40 h-40 bg-indigo-500/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
+                        <div class="relative z-10">
+                            <h3 class="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-1">Projected Achievement Date</h3>
+                            <div class="flex flex-col md:flex-row md:items-baseline gap-2 mb-2">
+                                <span class="text-4xl md:text-5xl font-black text-slate-900" id="prediction-date">--</span>
+                                <span class="text-slate-500 font-medium">to reach <span id="res-goal-weight">--</span></span>
+                            </div>
+                            <p class="text-sm text-slate-600 max-w-lg">
+                                Based on a safe <span class="font-bold text-indigo-600">500 calorie deficit</span> daily. Consistency is key.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 2. The Numbers -->
+                    <div class="grid md:grid-cols-2 gap-6 mb-8">
+                        <div class="glass-panel p-6 text-center">
+                            <div class="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+                                <i class="fa-solid fa-fire"></i>
+                            </div>
+                            <h4 class="text-slate-500 font-bold text-xs uppercase mb-1">Maintenance (TDEE)</h4>
+                            <div class="text-3xl font-black text-slate-800" id="tdee-val">--</div>
+                            <p class="text-xs text-slate-400 mt-1">Don't eat above this to avoid gain</p>
+                        </div>
+                        <div class="glass-panel p-6 text-center border-2 border-green-400 bg-green-50/30">
+                            <div class="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+                                <i class="fa-solid fa-bullseye"></i>
+                            </div>
+                            <h4 class="text-green-700 font-bold text-xs uppercase mb-1">Fat Loss Target</h4>
+                            <div class="text-3xl font-black text-green-800" id="loss-val">--</div>
+                            <p class="text-xs text-green-600 mt-1">Suggested Daily Intake</p>
+                        </div>
+                    </div>
+
+                    <!-- 3. Pro Protocol: Zig Zag Cycling (Value Add) -->
+                    <div class="glass-panel p-8 mb-8">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="font-bold text-xl text-slate-800"><i class="fa-solid fa-stairs text-indigo-500 mr-2"></i> Zig-Zag Cycle Strategy</h3>
+                            <span class="text-xs font-bold bg-indigo-100 text-indigo-700 px-2 py-1 rounded">PRO TIP</span>
+                        </div>
+                        <p class="text-sm text-slate-600 mb-6">
+                            To prevent metabolic adaptation, many experts suggest cycling calories. This "confuses" the body and can help break plateaus.
+                        </p>
+                        
+                        <div class="grid grid-cols-7 gap-2 text-center">
+                            <!-- Days generated by JS -->
+                            <div class="p-2 rounded-lg bg-indigo-100/50">
+                                <div class="text-[10px] font-bold text-slate-500 uppercase">Mon</div>
+                                <div class="font-bold text-sm text-indigo-900" id="zz-mon">--</div>
+                            </div>
+                            <div class="p-2 rounded-lg bg-indigo-100/50">
+                                <div class="text-[10px] font-bold text-slate-500 uppercase">Tue</div>
+                                <div class="font-bold text-sm text-indigo-900" id="zz-tue">--</div>
+                            </div>
+                            <div class="p-2 rounded-lg bg-indigo-600 text-white shadow-lg transform scale-105">
+                                <div class="text-[10px] font-bold text-indigo-200 uppercase">Wed</div>
+                                <div class="font-bold text-sm" id="zz-wed">--</div>
+                                <div class="text-[8px] uppercase tracking-wide mt-1">High</div>
+                            </div>
+                            <div class="p-2 rounded-lg bg-indigo-100/50">
+                                <div class="text-[10px] font-bold text-slate-500 uppercase">Thu</div>
+                                <div class="font-bold text-sm text-indigo-900" id="zz-thu">--</div>
+                            </div>
+                            <div class="p-2 rounded-lg bg-indigo-100/50">
+                                <div class="text-[10px] font-bold text-slate-500 uppercase">Fri</div>
+                                <div class="font-bold text-sm text-indigo-900" id="zz-fri">--</div>
+                            </div>
+                            <div class="p-2 rounded-lg bg-indigo-600 text-white shadow-lg transform scale-105">
+                                <div class="text-[10px] font-bold text-indigo-200 uppercase">Sat</div>
+                                <div class="font-bold text-sm" id="zz-sat">--</div>
+                                <div class="text-[8px] uppercase tracking-wide mt-1">Refeed</div>
+                            </div>
+                            <div class="p-2 rounded-lg bg-indigo-100/50">
+                                <div class="text-[10px] font-bold text-slate-500 uppercase">Sun</div>
+                                <div class="font-bold text-sm text-indigo-900" id="zz-sun">--</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Macros -->
+                    <div class="glass-panel p-6 flex flex-col md:flex-row items-center gap-8">
+                        <div class="w-full md:w-1/3">
+                            <canvas id="macroChart"></canvas>
+                        </div>
+                        <div class="w-full md:w-2/3 space-y-4">
+                            <h3 class="font-bold text-lg text-slate-800">Balanced Macro Split</h3>
+                            <div class="flex items-center justify-between p-3 rounded-xl bg-red-50 border border-red-100">
+                                <span class="font-bold text-red-800">Carbohydrates</span>
+                                <span class="font-mono font-bold text-red-600" id="val-c">--g</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 rounded-xl bg-blue-50 border border-blue-100">
+                                <span class="font-bold text-blue-800">Protein</span>
+                                <span class="font-mono font-bold text-blue-600" id="val-p">--g</span>
+                            </div>
+                            <div class="flex items-center justify-between p-3 rounded-xl bg-yellow-50 border border-yellow-100">
+                                <span class="font-bold text-yellow-800">Fats</span>
+                                <span class="font-mono font-bold text-yellow-600" id="val-f">--g</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Print/Share Actions -->
+                    <div class="mt-8 flex gap-4 no-print">
+                        <button onclick="window.print()" class="flex-1 bg-white border-2 border-slate-200 hover:border-slate-800 text-slate-800 font-bold py-4 rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-print"></i> Print Report
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- RIGHT: Educational Content (SEO) -->
+            <div class="lg:col-span-5 space-y-6 fade-in-up" style="animation-delay: 0.2s;">
+                
+                <!-- Info Card -->
+                <div class="glass-panel p-6 bg-gradient-to-br from-white to-indigo-50/50">
+                    <h3 class="font-bold text-lg text-indigo-900 mb-3">Understanding the Data</h3>
+                    <p class="text-sm text-slate-600 mb-3">
+                        This calculator uses the <strong>Mifflin-St Jeor</strong> formula, widely recognized in clinical settings as the most reliable predictive equation for resting metabolic rate.
+                    </p>
+                    <p class="text-sm text-slate-600">
+                        <i class="fa-solid fa-info-circle text-indigo-500 mr-1"></i> <strong>Pro Tip:</strong> Values are estimates. True caloric needs can vary by ±10% based on genetics and non-exercise movement (NEAT).
+                    </p>
+                </div>
+                
+                [attachment_0](attachment)
+
+                <!-- FAQ Accordion -->
+                <div class="glass-panel p-6">
+                    <h3 class="font-bold text-xl mb-4">Common Questions</h3>
+                    <div class="space-y-4">
+                        <details class="group cursor-pointer">
+                            <summary class="flex justify-between items-center font-bold text-slate-700 list-none">
+                                How accurate is this?
+                                <span class="transition group-open:rotate-180"><i class="fa-solid fa-chevron-down text-xs"></i></span>
+                            </summary>
+                            <p class="text-sm text-slate-600 mt-2 leading-relaxed">
+                                It provides a baseline. We recommend following the calculated number for 2 weeks. If you don't lose weight, reduce by another 100-200 calories.
+                            </p>
+                        </details>
+                        
+                        <details class="group cursor-pointer">
+                            <summary class="flex justify-between items-center font-bold text-slate-700 list-none">
+                                What is the "Zig Zag" method?
+                                <span class="transition group-open:rotate-180"><i class="fa-solid fa-chevron-down text-xs"></i></span>
+                            </summary>
+                            <p class="text-sm text-slate-600 mt-2 leading-relaxed">
+                                Also known as "Calorie Cycling," it involves eating lower calories on some days and higher on others (refeeds). This may help adherence and hormonal balance.
+                            </p>
+                        </details>
+
+                        <details class="group cursor-pointer">
+                            <summary class="flex justify-between items-center font-bold text-slate-700 list-none">
+                                Should I eat back exercise calories?
+                                <span class="transition group-open:rotate-180"><i class="fa-solid fa-chevron-down text-xs"></i></span>
+                            </summary>
+                            <p class="text-sm text-slate-600 mt-2 leading-relaxed">
+                                Generally, no. Fitness trackers often overestimate burn. The "Activity Level" setting in the calculator already accounts for your workouts.
+                            </p>
+                        </details>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-6 border-l-4 border-yellow-400">
+                    <h4 class="font-bold text-slate-800 text-sm mb-2">DISCLAIMER</h4>
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        The results presented are statistical estimates based on population averages. This tool is for educational purposes and planning only. It is not a medical diagnosis or prescription. Consult a healthcare professional before making drastic changes to your diet.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+    </main>
+    <!-- LOGIC CORE -->
+    <script>
+        let chartInstance = null;
+
+        // Sync weight unit label for goal input
+        document.getElementById('weight-unit').addEventListener('change', function() {
+            document.getElementById('goal-unit-display').innerText = this.value;
+        });
+
+        function toggleHeightInputs(val) {
+            const cmWrap = document.getElementById('height-cm-wrapper');
+            const ftWrap = document.getElementById('height-ft-wrapper');
+            
+            if (val === 'cm') {
+                cmWrap.classList.remove('hidden');
+                ftWrap.classList.add('hidden');
+                ftWrap.classList.remove('flex');
+            } else {
+                cmWrap.classList.add('hidden');
+                ftWrap.classList.remove('hidden');
+                ftWrap.classList.add('flex');
+            }
+        }
+
+        function calculateCalories(e) {
+            e.preventDefault();
+
+            // 1. Gather Inputs
+            const gender = document.querySelector('input[name="gender"]:checked').value;
+            const age = parseFloat(document.getElementById('age').value);
+            const activity = parseFloat(document.getElementById('activity').value);
+            
+            // 2. Weight Processing (Normalize to kg)
+            let weightInput = parseFloat(document.getElementById('weight').value);
+            let weightUnit = document.getElementById('weight-unit').value;
+            let weightKg = weightUnit === 'kg' ? weightInput : weightInput * 0.453592;
+
+            // 3. Goal Weight Processing
+            let goalInput = parseFloat(document.getElementById('goal-weight').value);
+            let goalKg = 0;
+            if (goalInput) {
+                goalKg = weightUnit === 'kg' ? goalInput : goalInput * 0.453592;
+            }
+
+            // 4. Height Processing (Normalize to cm)
+            let heightUnit = document.getElementById('height-unit-selector').value;
+            let heightCm = 0;
+            if (heightUnit === 'cm') {
+                heightCm = parseFloat(document.getElementById('height-cm').value);
+            } else {
+                let ft = parseFloat(document.getElementById('height-ft').value || 0);
+                let in_val = parseFloat(document.getElementById('height-in').value || 0);
+                heightCm = (ft * 30.48) + (in_val * 2.54);
+            }
+
+            if (!age || !weightKg || !heightCm) {
+                alert("Please ensure all fields are filled correctly.");
+                return;
+            }
+
+            // 5. Mifflin-St Jeor Formula
+            // Men: (10 × weight in kg) + (6.25 × height in cm) - (5 × age in years) + 5
+            // Women: (10 × weight in kg) + (6.25 × height in cm) - (5 × age in years) - 161
+            let bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age);
+            bmr += (gender === 'male' ? 5 : -161);
+
+            let tdee = Math.round(bmr * activity);
+            
+            // Standard Deficit for sustainable loss
+            let deficit = 500; 
+            let targetCals = tdee - deficit;
+            
+            // If they are already lighter than goal or goal is empty, assume maintenance or surplus logic, 
+            // but for this viral predictor we focus on Weight Loss as primary case or Maintenance
+            if (goalKg > weightKg) {
+                // They want to gain
+                targetCals = tdee + 300; // Surplus
+                deficit = -300;
+            } else if (!goalInput || goalKg === weightKg) {
+                targetCals = tdee;
+                deficit = 0;
+            }
+
+            // 6. Calculate Date (Viral Feature)
+            let dateText = "Maintain";
+            if (deficit > 0 && goalInput) {
+                let weightDiffKg = weightKg - goalKg;
+                if(weightDiffKg > 0) {
+                    // 7700 cals per kg of fat
+                    let totalDeficitNeeded = weightDiffKg * 7700;
+                    let daysToGoal = totalDeficitNeeded / deficit;
+                    
+                    let targetDate = new Date();
+                    targetDate.setDate(targetDate.getDate() + daysToGoal);
+                    
+                    const options = { month: 'long', day: 'numeric', year: 'numeric' };
+                    dateText = targetDate.toLocaleDateString('en-US', options);
+                }
+            } else if (deficit < 0 && goalInput) {
+                 // Weight Gain Date logic (approx 2000-3000 surplus for 1lb muscle/fat mix, lets say 7700 for simplicity of mass)
+                let weightDiffKg = goalKg - weightKg;
+                 let totalSurplusNeeded = weightDiffKg * 7700;
+                 let daysToGoal = totalSurplusNeeded / Math.abs(deficit);
+                 
+                 let targetDate = new Date();
+                 targetDate.setDate(targetDate.getDate() + daysToGoal);
+                 const options = { month: 'long', day: 'numeric', year: 'numeric' };
+                 dateText = targetDate.toLocaleDateString('en-US', options);
+            }
+
+            // 7. Update UI
+            document.getElementById('tdee-val').innerText = tdee.toLocaleString();
+            document.getElementById('loss-val').innerText = targetCals.toLocaleString();
+            document.getElementById('prediction-date').innerText = dateText;
+            document.getElementById('res-goal-weight').innerText = goalInput ? `${goalInput} ${weightUnit}` : "Current Weight";
+
+            // 8. Zig Zag Logic (Weekly Cycle)
+            // Mon, Tue, Thu, Fri, Sun = Normal Low (Target)
+            // Wed, Sat = High (Target + 15%ish)
+            // To balance weekly average, low days drop slightly more
+            // Let's keep it simple: Target is the baseline. 
+            // ZigZag Strategy: 5 days at Target, 2 days at Target + 400? 
+            // A true ZigZag maintains the weekly average. 
+            // Weekly Budget = targetCals * 7.
+            // High Days = 2. Low Days = 5.
+            // Let High = Target + 300.
+            // Let Low = (Weekly - (High*2)) / 5.
+            
+            let weeklyBudget = targetCals * 7;
+            let highDay = targetCals + 300;
+            let lowDay = Math.round((weeklyBudget - (highDay * 2)) / 5);
+
+            document.getElementById('zz-mon').innerText = lowDay;
+            document.getElementById('zz-tue').innerText = lowDay;
+            document.getElementById('zz-wed').innerText = highDay; // High
+            document.getElementById('zz-thu').innerText = lowDay;
+            document.getElementById('zz-fri').innerText = lowDay;
+            document.getElementById('zz-sat').innerText = highDay; // High
+            document.getElementById('zz-sun').innerText = lowDay;
+
+            // 9. Macros (30P / 35C / 35F)
+            let p = Math.round((targetCals * 0.3) / 4);
+            let c = Math.round((targetCals * 0.35) / 4);
+            let f = Math.round((targetCals * 0.35) / 9);
+
+            document.getElementById('val-p').innerText = p + "g";
+            document.getElementById('val-c').innerText = c + "g";
+            document.getElementById('val-f').innerText = f + "g";
+
+            renderChart(c, p, f);
+
+            // Show results
+            const r = document.getElementById('results');
+            r.classList.remove('hidden');
+            r.scrollIntoView({behavior:'smooth'});
+        }
+
+        function renderChart(c, p, f) {
+            const ctx = document.getElementById('macroChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Carbs', 'Protein', 'Fat'],
+                    datasets: [{
+                        data: [c*4, p*4, f*9],
+                        backgroundColor: ['#f87171', '#60a5fa', '#facc15'],
+                        borderWidth: 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    cutout: '75%'
+                }
+            });
+        }
+    </script>
+</body>
+</html>
